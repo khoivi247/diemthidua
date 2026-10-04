@@ -7,6 +7,17 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[c]));
 
+// Kiểm tra score có phải số không
+function isNumeric(v) {
+  if (v === '' || v === null || v === undefined) return false;
+  return !isNaN(Number(v)) && isFinite(Number(v));
+}
+// Hiển thị score: số thì format, chữ thì hiện nguyên
+function fmtScore(v) {
+  if (isNumeric(v)) return fmtNum(Number(v));
+  return escapeHtml(String(v));
+}
+
 // ===== So sánh tên lớp: 6 < 7A1 < 7A2 < 8A1 < 9 < 10A1 ... =====
 function parseClassName(name) {
   const s = String(name).trim().toUpperCase();
