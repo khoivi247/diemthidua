@@ -1,5 +1,5 @@
 // 👇 DÁN URL APPS SCRIPT CỦA M VÀO ĐÂY
-const API = 'https://script.google.com/macros/s/AKfycbxzjhEcFQE2Z5W-V4hGDjsugRDm_98oISTwAkTDOcprQw6nnfNJu-1Uf2j7Nw4XtuWXjw/exec';
+const API = 'https://script.google.com/macros/s/AKfycbxppP3VZ-kWnxs1pqEeQsnKEs5AR1wFSlixYXNcLyLzUSkn1hSi4ODqL0RdhCIqK0VGcA/exec';
 
 const $ = id => document.getElementById(id);
 const fmtNum = n => (Math.round(n * 100) / 100).toLocaleString('vi-VN');
@@ -34,6 +34,10 @@ let myWeeks = [];
 let myWeek = null;
 let myChart = null;
 
+let specialData = [];
+let specialType = 'collective_good';
+let specialChart = null;
+
 let token = null;
 let isAdmin = false;
 let currentTab = 'school';
@@ -49,10 +53,26 @@ function calcTotal(good, fair, total, redFlag) {
 
 function formatDate(d) {
   if (!d) return '';
-  const parts = String(d).slice(0, 10).split('-');
-  if (parts.length !== 3) return String(d);
-  const [y, m, day] = parts;
-  return `${day}/${m}/${y}`;
+  // Nếu là Date object (hiếm khi xảy ra qua JSON, nhưng phòng)
+  if (d instanceof Date) {
+    const day = String(d.getDate()).padStart(2, '0');
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const y = d.getFullYear();
+    return `${day}/${m}/${y}`;
+  }
+  // Nếu là chuỗi ISO yyyy-MM-dd
+  const s = String(d);
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  // Nếu là chuỗi Date.toString() kiểu "Mon Sep 28 2026..."
+  const dt = new Date(s);
+  if (!isNaN(dt.getTime())) {
+    const day = String(dt.getDate()).padStart(2, '0');
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const y = dt.getFullYear();
+    return `${day}/${m}/${y}`;
+  }
+  return s;
 }
 
 function flashStatus(msg, isErr) {
@@ -451,6 +471,151 @@ function renderMyChart() {
   });
 }
 
+// =================== SPECIAL ===================
+async function loadSpecial() {
+  $('specialList').innerHTML = Array.from({ length: 4 }).map(() => `
+    <div class="skeleton-row">
+      <div class="skeleton" style="width:24px;height:16px;"></div>
+      <div class="skeleton" style="max-width:120px;"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+    </div>
+  `).join('');
+  try {
+    const res = await fetch(`${API}?action=special&type=${encodeURIComponent(specialType)}`);
+    const j = await res.json();
+    specialData = j.data || [];
+    renderSpecial();
+    flashStatus('Đã cập nhật ' + new Date().toLocaleTimeString('vi-VN'), false);
+  } catch (e) {
+    $('specialList').innerHTML = '<div class="empty">Không tải được dữ liệu</div>';
+    flashStatus('Lỗi: ' + e.message, true);
+  }
+}
+
+function renderSpecial() {
+  renderSpecialList();
+  renderSpecialChart();
+  updateSpecialTabStyles();
+}
+
+function updateSpecialTabStyles() {
+  document.querySelectorAll('.special-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.type === specialType);
+  });
+}
+
+function renderSpecialList() {
+  if (!specialData.length) {
+    $('specialList').innerHTML = '<div class="empty">Chưa có dữ liệu cho mục này</div>';
+    return;
+  }
+  const sorted = specialData.slice().sort((a, b) => {
+    if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
+    return b.row - a.row;
+  });
+
+  $('specialList').innerHTML = sorted.map(t => {
+    const cls = t.class ? escapeHtml(t.class) : '';
+    const student = t.student ? ` – ${escapeHtml(t.student)}` : '';
+    const pointClass = t.point >= 0 ? 'point-plus' : 'point-minus';
+    const pointText = (t.point >= 0 ? '+' : '') + t.point;
+    return `
+      <div class="special-row">
+        <div class="special-date">${formatDate(t.date)}</div>
+        <div class="special-main">
+          <div class="special-title">
+            ${cls}${student}
+            <span class="special-point ${pointClass}">${pointText}</span>
+          </div>
+          <div class="special-content">${escapeHtml(t.content)}</div>
+        </div>
+        <div class="actions ${isAdmin ? 'show' : ''}">
+          <button class="mini-btn" onclick="editSpecial(${t.row})">Sửa</button>
+          <button class="mini-btn danger" onclick="deleteSpecial(${t.row})">Xóa</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderSpecialChart() {
+  if (typeof Chart === 'undefined') return;
+  const ctx = $('specialChart');
+  if (!ctx) return;
+
+  if (!specialData.length) {
+    if (specialChart) { specialChart.destroy(); specialChart = null; }
+    return;
+  }
+
+  const byClass = {};
+  specialData.forEach(t => {
+    if (!t.class) return;
+    byClass[t.class] = (byClass[t.class] || 0) + t.point;
+  });
+  const labels = Object.keys(byClass).sort((a, b) => compareClassName(a, b));
+  const values = labels.map(l => byClass[l]);
+
+  const colors = values.map(v => v >= 0 ? 'rgba(74,222,128,.75)' : 'rgba(248,113,113,.75)');
+  const borders = values.map(v => v >= 0 ? '#4ade80' : '#f87171');
+
+  if (specialChart) { specialChart.destroy(); specialChart = null; }
+
+  specialChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Điểm cộng/trừ',
+        data: values,
+        backgroundColor: colors,
+        borderColor: borders,
+        borderWidth: 1,
+        borderRadius: 5,
+        maxBarThickness: 36,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#171a21',
+          borderColor: '#262b36',
+          borderWidth: 1,
+          titleColor: '#e6e9ef',
+          bodyColor: '#e6e9ef',
+          padding: 10,
+          cornerRadius: 8,
+          callbacks: { label: c => ' ' + (c.parsed.y >= 0 ? '+' : '') + c.parsed.y + ' điểm' },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#8a93a3', font: { size: 11 }, autoSkip: false, maxRotation: 45 },
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,.04)' },
+          ticks: { color: '#8a93a3', font: { size: 12 }, precision: 0 },
+        },
+      },
+    },
+  });
+}
+
+// Nút chuyển giữa 4 loại đặc biệt
+document.querySelectorAll('.special-tab').forEach(btn => {
+  btn.onclick = () => {
+    specialType = btn.dataset.type;
+    updateSpecialTabStyles();
+    loadSpecial();
+  };
+});
+
 // =================== ADMIN ===================
 $('adminBtn').onclick = () => {
   if (isAdmin) {
@@ -459,10 +624,13 @@ $('adminBtn').onclick = () => {
     $('adminBtn').textContent = 'Đăng nhập admin';
     $('adminBtn').classList.remove('active');
     $('addFormSchool').classList.remove('show');
-    $('addFormMy').classList.remove('show');   // ✅ ẩn form lớp t
+    $('addFormMy').classList.remove('show');
+    $('addFormSpecial').classList.remove('show');
     $('tabMyClass').classList.add('hidden');
     if (currentTab === 'myclass') switchTab('school');
     renderSchoolList();
+    renderMyList();
+    renderSpecialList();
     flashStatus('Đã đăng xuất', false);
   } else {
     $('modalBg').classList.add('show');
@@ -498,7 +666,8 @@ $('btnLogin').onclick = async () => {
       $('adminBtn').textContent = 'Admin đang đăng nhập';
       $('adminBtn').classList.add('active');
       $('addFormSchool').classList.add('show');
-      $('addFormMy').classList.add('show');    // ✅ HIỆN form lớp t
+      $('addFormMy').classList.add('show');
+      $('addFormSpecial').classList.add('show');
       $('tabMyClass').classList.remove('hidden');
       $('modalBg').classList.remove('show');
       $('pw').value = '';
@@ -511,6 +680,7 @@ $('btnLogin').onclick = async () => {
       }
       renderSchoolList();
       renderMyList();
+      renderSpecialList();
       flashStatus('Đăng nhập thành công', false);
     } else {
       flashStatus('Sai mật khẩu', true);
@@ -656,6 +826,66 @@ window.deleteMy = async function(row) {
   try {
     await post({ action: 'deleteMy', row });
     await loadMy();
+    flashStatus('Đã xóa', false);
+  } catch (e) { flashStatus('Lỗi: ' + e.message, true); }
+};
+
+// =================== CRUD SPECIAL ===================
+$('addFormSpecial').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!isAdmin) return;
+  const payload = {
+    action: 'addSpecial',
+    type: specialType,
+    class: $('spClass').value.trim(),
+    student: $('spStudent').value.trim(),
+    content: $('spContent').value.trim(),
+    date: $('spDate').value,
+    point: Number($('spPoint').value),
+  };
+  $('btnAddSpecial').disabled = true;
+  $('btnAddSpecial').textContent = 'Đang thêm...';
+  try {
+    await post(payload);
+    $('spClass').value = '';
+    $('spStudent').value = '';
+    $('spContent').value = '';
+    $('spPoint').value = '';
+    await loadSpecial();
+    flashStatus('Đã thêm', false);
+  } catch (err) {
+    flashStatus('Lỗi: ' + err.message, true);
+  } finally {
+    $('btnAddSpecial').disabled = false;
+    $('btnAddSpecial').textContent = 'Thêm';
+  }
+});
+
+window.editSpecial = async function(row) {
+  if (!isAdmin) return;
+  const t = specialData.find(x => x.row === row);
+  if (!t) return;
+  const cls = prompt('Lớp:', t.class); if (cls === null) return;
+  const student = prompt('Học sinh (để trống nếu tập thể):', t.student); if (student === null) return;
+  const content = prompt('Nội dung:', t.content); if (content === null) return;
+  const date = prompt('Ngày (YYYY-MM-DD):', t.date); if (date === null) return;
+  const point = prompt('Điểm (+/-):', t.point); if (point === null) return;
+  try {
+    await post({
+      action: 'updateSpecial', row,
+      type: t.type, class: cls, student, content, date, point: Number(point),
+    });
+    await loadSpecial();
+    flashStatus('Đã cập nhật', false);
+  } catch (e) { flashStatus('Lỗi: ' + e.message, true); }
+};
+
+window.deleteSpecial = async function(row) {
+  if (!isAdmin) return;
+  if (!confirm('Xóa dòng này?')) return;
+  try {
+    await post({ action: 'deleteSpecial', row });
+    await loadSpecial();
     flashStatus('Đã xóa', false);
   } catch (e) { flashStatus('Lỗi: ' + e.message, true); }
 };
