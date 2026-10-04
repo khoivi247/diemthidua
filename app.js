@@ -7,21 +7,17 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[c]));
 
-// ===== Hàm so sánh tên lớp: 6 < 7A1 < 7A2 < 8A1 < 9 < 10A1 ... =====
+// ===== So sánh tên lớp: 6 < 7A1 < 7A2 < 8A1 < 9 < 10A1 ... =====
 function parseClassName(name) {
   const s = String(name).trim().toUpperCase();
   const m = s.match(/^(\d+)\s*([A-Z]*)/);
   if (!m) return { grade: 999, letter: s };
-  return {
-    grade: parseInt(m[1], 10),
-    letter: m[2] || '' // lớp "9" thì letter = ''
-  };
+  return { grade: parseInt(m[1], 10), letter: m[2] || '' };
 }
 function compareClassName(a, b) {
   const pa = parseClassName(a);
   const pb = parseClassName(b);
   if (pa.grade !== pb.grade) return pa.grade - pb.grade;
-  // Lớp không có chữ cái (VD "9") xếp trước lớp có chữ (VD "9A1")
   if (pa.letter === '' && pb.letter !== '') return -1;
   if (pa.letter !== '' && pb.letter === '') return 1;
   return pa.letter.localeCompare(pb.letter);
@@ -95,12 +91,8 @@ function switchTab(tab) {
   document.querySelectorAll('.panel').forEach(p => {
     p.classList.toggle('active', p.id === 'panel-' + tab);
   });
-
-  if (tab === 'school') {
-    loadSchool();
-  } else if (tab === 'myclass') {
-    loadMy();
-  }
+  if (tab === 'school') loadSchool();
+  else if (tab === 'myclass') loadMy();
 }
 
 document.querySelectorAll('.tabs .tab').forEach(tab => {
@@ -125,7 +117,6 @@ async function loadSchoolWeeks() {
   const res = await fetch(`${API}?action=weeks`);
   const j = await res.json();
   schoolWeeks = j.data || [];
-
   if (!schoolWeeks.length) {
     $('weekSelect').innerHTML = '<option>Chưa có dữ liệu</option>';
     $('weekRange').textContent = '';
@@ -153,7 +144,7 @@ async function loadSchool() {
     const res = await fetch(`${API}?week=${schoolWeek}`);
     const j = await res.json();
     const rows = (j.data || []).slice();
-    rows.sort((a, b) => b.score - a.score); // giữ sort theo điểm cho podium
+    rows.sort((a, b) => b.score - a.score);
     schoolData = rows;
     renderSchool();
     flashStatus('Đã cập nhật ' + new Date().toLocaleTimeString('vi-VN'), false);
@@ -173,21 +164,18 @@ function renderSchoolPodium() {
   if (!schoolData.length) { $('podium').innerHTML = ''; return; }
   const top3 = schoolData.slice(0, 3);
   const order = [1, 0, 2];
-  $('podium').innerHTML = order
-    .filter(i => top3[i])
-    .map(i => {
-      const t = top3[i];
-      const rank = i + 1;
-      return `
-        <div class="podium-card rank-${rank}" style="animation-delay:${i * 0.15}s">
-          <div class="rank-badge">TOP ${rank}</div>
-          <div class="class-name">${escapeHtml(t.class)}</div>
-          <div class="score">${fmtNum(t.score)}</div>
-          <div class="score-label">điểm</div>
-        </div>
-      `;
-    })
-    .join('');
+  $('podium').innerHTML = order.filter(i => top3[i]).map(i => {
+    const t = top3[i];
+    const rank = i + 1;
+    return `
+      <div class="podium-card rank-${rank}" style="animation-delay:${i * 0.15}s">
+        <div class="rank-badge">TOP ${rank}</div>
+        <div class="class-name">${escapeHtml(t.class)}</div>
+        <div class="score">${fmtNum(t.score)}</div>
+        <div class="score-label">điểm</div>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderSchoolList() {
@@ -195,11 +183,7 @@ function renderSchoolList() {
     $('list').innerHTML = '<div class="empty">Tuần này chưa có dữ liệu</div>';
     return;
   }
-
-  // Sắp xếp theo tên lớp (lớp bé → lớp lớn)
   const sorted = schoolData.slice().sort((a, b) => compareClassName(a.class, b.class));
-
-  // Bảng xếp hạng theo điểm để tô màu top 1/2/3
   const ranks = schoolData.slice().sort((a, b) => b.score - a.score);
   const rankOf = new Map(ranks.map((t, i) => [t.class, i + 1]));
 
@@ -226,19 +210,15 @@ function renderSchoolChart() {
   if (typeof Chart === 'undefined') return;
   const ctx = $('chart');
   if (!ctx) return;
-
   if (!schoolData.length) {
     if (chart) { chart.destroy(); chart = null; }
     return;
   }
 
-  // ✅ Sắp xếp theo tên lớp: 6 < 7A1 < 7A2 < 8A1 < 8A2 < 9 < 10A1 < 10A2 ...
   const sortedByClass = schoolData.slice().sort((a, b) => compareClassName(a.class, b.class));
-
   const labels = sortedByClass.map(t => t.class);
   const values = sortedByClass.map(t => t.score);
 
-  // Màu theo thứ hạng điểm
   const ranks = schoolData.slice().sort((a, b) => b.score - a.score);
   const rankOf = new Map(ranks.map((t, i) => [t.class, i]));
 
@@ -270,7 +250,7 @@ function renderSchoolChart() {
         borderColor: borders,
         borderWidth: 1,
         borderRadius: 5,
-        maxBarThickness: 36,   // nhỏ hơn chút để 13 cột đẹp
+        maxBarThickness: 36,
       }],
     },
     options: {
@@ -296,7 +276,7 @@ function renderSchoolChart() {
           ticks: {
             color: '#8a93a3',
             font: { size: 11 },
-            autoSkip: false,      // ✅ hiện đủ 13 nhãn
+            autoSkip: false,
             maxRotation: 45,
             minRotation: 0,
           },
@@ -316,7 +296,6 @@ async function loadMyWeeks() {
   const res = await fetch(`${API}?action=myweeks`);
   const j = await res.json();
   myWeeks = j.data || [];
-
   if (!myWeeks.length) {
     $('myWeekSelect').innerHTML = '<option>Chưa có dữ liệu</option>';
     $('myWeekRange').textContent = '';
@@ -377,7 +356,6 @@ function renderMy() {
     $('myRed').textContent = '—';
     $('myTotal').textContent = '—';
   }
-
   renderMyList();
   renderMyChart();
 }
@@ -416,12 +394,10 @@ function renderMyChart() {
   if (typeof Chart === 'undefined') return;
   const ctx = $('myChart');
   if (!ctx) return;
-
   if (!myData.length) {
     if (myChart) { myChart.destroy(); myChart = null; }
     return;
   }
-
   const labels = myData.map(t => 'Tuần ' + t.week);
   const values = myData.map(t => Math.round(t.totalScore * 100) / 100);
 
@@ -464,10 +440,7 @@ function renderMyChart() {
         },
       },
       scales: {
-        x: {
-          grid: { display: false },
-          ticks: { color: '#8a93a3', font: { size: 12 } },
-        },
+        x: { grid: { display: false }, ticks: { color: '#8a93a3', font: { size: 12 } } },
         y: {
           beginAtZero: true,
           grid: { color: 'rgba(255,255,255,.04)' },
@@ -486,6 +459,7 @@ $('adminBtn').onclick = () => {
     $('adminBtn').textContent = 'Đăng nhập admin';
     $('adminBtn').classList.remove('active');
     $('addFormSchool').classList.remove('show');
+    $('addFormMy').classList.remove('show');   // ✅ ẩn form lớp t
     $('tabMyClass').classList.add('hidden');
     if (currentTab === 'myclass') switchTab('school');
     renderSchoolList();
@@ -524,6 +498,7 @@ $('btnLogin').onclick = async () => {
       $('adminBtn').textContent = 'Admin đang đăng nhập';
       $('adminBtn').classList.add('active');
       $('addFormSchool').classList.add('show');
+      $('addFormMy').classList.add('show');    // ✅ HIỆN form lớp t
       $('tabMyClass').classList.remove('hidden');
       $('modalBg').classList.remove('show');
       $('pw').value = '';
@@ -534,8 +509,8 @@ $('btnLogin').onclick = async () => {
         $('fsFrom').value = String(ws.from).slice(0, 10);
         $('fsTo').value = String(ws.to).slice(0, 10);
       }
-
       renderSchoolList();
+      renderMyList();
       flashStatus('Đăng nhập thành công', false);
     } else {
       flashStatus('Sai mật khẩu', true);
@@ -551,11 +526,10 @@ $('btnLogin').onclick = async () => {
 };
 
 async function post(body) {
-  // ✅ Gửi action qua query string để Apps Script đọc được
   const url = `${API}?action=${encodeURIComponent(body.action)}`;
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // tránh CORS preflight
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ ...body, token }),
   });
   const j = await res.json();
@@ -567,7 +541,6 @@ async function post(body) {
 $('addFormSchool').addEventListener('submit', async e => {
   e.preventDefault();
   if (!isAdmin) return;
-
   const payload = {
     action: 'addSchool',
     week: $('fsWeek').value,
@@ -576,10 +549,8 @@ $('addFormSchool').addEventListener('submit', async e => {
     class: $('fsClass').value.trim(),
     score: Number($('fsScore').value),
   };
-
   $('btnAddSchool').disabled = true;
   $('btnAddSchool').textContent = 'Đang thêm...';
-
   try {
     await post(payload);
     $('fsClass').value = '';
@@ -598,27 +569,19 @@ window.editSchool = async function(row) {
   if (!isAdmin) return;
   const t = schoolData.find(x => x.row === row);
   if (!t) return;
-
   const cls = prompt('Tên lớp:', t.class);
   if (cls === null) return;
   const score = prompt('Điểm thi đua:', t.score);
   if (score === null) return;
-
   try {
     await post({
-      action: 'updateSchool',
-      row,
-      week: t.week,
-      from: t.from,
-      to: t.to,
-      class: cls,
-      score: Number(score),
+      action: 'updateSchool', row,
+      week: t.week, from: t.from, to: t.to,
+      class: cls, score: Number(score),
     });
     await loadSchool();
     flashStatus('Đã cập nhật', false);
-  } catch (e) {
-    flashStatus('Lỗi: ' + e.message, true);
-  }
+  } catch (e) { flashStatus('Lỗi: ' + e.message, true); }
 };
 
 window.deleteSchool = async function(row) {
@@ -628,16 +591,13 @@ window.deleteSchool = async function(row) {
     await post({ action: 'deleteSchool', row });
     await loadSchool();
     flashStatus('Đã xóa', false);
-  } catch (e) {
-    flashStatus('Lỗi: ' + e.message, true);
-  }
+  } catch (e) { flashStatus('Lỗi: ' + e.message, true); }
 };
 
 // =================== CRUD LỚP T ===================
 $('addFormMy').addEventListener('submit', async e => {
   e.preventDefault();
   if (!isAdmin) return;
-
   const payload = {
     action: 'addMy',
     week: $('fmWeek').value,
@@ -648,10 +608,8 @@ $('addFormMy').addEventListener('submit', async e => {
     total: Number($('fmTotal').value),
     redFlag: Number($('fmRed').value),
   };
-
   $('btnAddMy').disabled = true;
   $('btnAddMy').textContent = 'Đang thêm...';
-
   try {
     await post(payload);
     $('fmGood').value = '';
@@ -672,7 +630,6 @@ window.editMy = async function(row) {
   if (!isAdmin) return;
   const t = myData.find(x => x.row === row);
   if (!t) return;
-
   const good = prompt('Số giờ tốt:', t.good);
   if (good === null) return;
   const fair = prompt('Số giờ khá:', t.fair);
@@ -681,24 +638,16 @@ window.editMy = async function(row) {
   if (total === null) return;
   const redFlag = prompt('Điểm cờ đỏ:', t.redFlag);
   if (redFlag === null) return;
-
   try {
     await post({
-      action: 'updateMy',
-      row,
-      week: t.week,
-      from: t.from,
-      to: t.to,
-      good: Number(good),
-      fair: Number(fair),
-      total: Number(total),
-      redFlag: Number(redFlag),
+      action: 'updateMy', row,
+      week: t.week, from: t.from, to: t.to,
+      good: Number(good), fair: Number(fair),
+      total: Number(total), redFlag: Number(redFlag),
     });
     await loadMy();
     flashStatus('Đã cập nhật', false);
-  } catch (e) {
-    flashStatus('Lỗi: ' + e.message, true);
-  }
+  } catch (e) { flashStatus('Lỗi: ' + e.message, true); }
 };
 
 window.deleteMy = async function(row) {
@@ -708,9 +657,7 @@ window.deleteMy = async function(row) {
     await post({ action: 'deleteMy', row });
     await loadMy();
     flashStatus('Đã xóa', false);
-  } catch (e) {
-    flashStatus('Lỗi: ' + e.message, true);
-  }
+  } catch (e) { flashStatus('Lỗi: ' + e.message, true); }
 };
 
 // =================== Week selectors ===================
@@ -724,9 +671,7 @@ $('weekSelect').onchange = e => {
       const j = await res.json();
       schoolData = (j.data || []).slice().sort((a, b) => b.score - a.score);
       renderSchool();
-    } catch (err) {
-      flashStatus('Lỗi: ' + err.message, true);
-    }
+    } catch (err) { flashStatus('Lỗi: ' + err.message, true); }
   })();
 };
 
@@ -738,18 +683,12 @@ $('myWeekSelect').onchange = e => {
 
 // =================== Export ===================
 $('btnCsv').onclick = () => {
-  if (!schoolData.length) {
-    flashStatus('Không có dữ liệu để xuất', true);
-    return;
-  }
+  if (!schoolData.length) { flashStatus('Không có dữ liệu để xuất', true); return; }
   const w = schoolWeeks.find(x => String(x.week) === String(schoolWeek));
   const header = ['Hạng', 'Lớp', 'Điểm thi đua'];
-
-  // Sắp xếp theo tên lớp khi xuất CSV
   const sorted = schoolData.slice().sort((a, b) => compareClassName(a.class, b.class));
   const ranks = schoolData.slice().sort((a, b) => b.score - a.score);
   const rankOf = new Map(ranks.map((t, i) => [t.class, i + 1]));
-
   const rows = sorted.map(t => [rankOf.get(t.class), t.class, t.score]);
   const meta = [
     [`Bảng xếp hạng thi đua tuần ${schoolWeek}`],
@@ -770,10 +709,7 @@ $('btnCsv').onclick = () => {
 };
 
 $('btnPdf').onclick = () => {
-  if (!schoolData.length) {
-    flashStatus('Không có dữ liệu để xuất', true);
-    return;
-  }
+  if (!schoolData.length) { flashStatus('Không có dữ liệu để xuất', true); return; }
   const w = schoolWeeks.find(x => String(x.week) === String(schoolWeek));
   const printHeader = document.createElement('div');
   printHeader.className = 'print-header';
