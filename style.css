@@ -57,7 +57,6 @@ body {
 
 .wrap { max-width: 900px; margin: 0 auto; }
 
-/* ===== Header ===== */
 header {
   display: flex;
   justify-content: space-between;
@@ -115,11 +114,9 @@ h1 { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
   background: rgba(74, 222, 128, .08);
 }
 
-/* ===== Panel ===== */
 .panel { display: none; }
 .panel.active { display: block; animation: fadeIn .3s ease; }
 
-/* ===== Week bar ===== */
 .week-bar {
   display: flex;
   align-items: center;
@@ -163,7 +160,6 @@ h1 { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
 }
 .ghost-btn:hover { color: var(--text); border-color: var(--text); }
 
-/* ===== Cards ===== */
 .cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -193,7 +189,6 @@ h1 { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
 .card .value.total { color: var(--accent); }
 .card .value.anim { animation: pop .3s ease; }
 
-/* ===== Podium ===== */
 .podium {
   display: grid;
   grid-template-columns: 1fr 1.15fr 1fr;
@@ -268,7 +263,6 @@ h1 { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
   margin-top: 4px;
 }
 
-/* ===== List ===== */
 .list {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -323,6 +317,19 @@ h1 { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
   text-align: right;
   letter-spacing: -.02em;
 }
+/* Khi score là chữ (Chưa tổng hợp) */
+.row .total-score.text-score {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--muted);
+  font-weight: 500;
+}
+.podium-card .score.text-score {
+  font-size: 16px;
+  font-style: italic;
+  color: var(--muted);
+  font-weight: 500;
+}
 
 .row .actions {
   display: none;
@@ -345,7 +352,6 @@ h1 { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
 .mini-btn:hover { color: var(--text); border-color: var(--text); }
 .mini-btn.danger:hover { color: var(--chi); border-color: var(--chi); }
 
-/* ===== Chart ===== */
 .chart-wrap {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -370,7 +376,6 @@ h1 { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
   height: 320px;
 }
 
-/* ===== Form ===== */
 form.add-form {
   display: none;
   background: var(--panel);
@@ -418,7 +423,6 @@ button.primary {
 button.primary:hover { background: var(--accent-hover); }
 button.primary:disabled { opacity: .5; cursor: not-allowed; }
 
-/* ===== Empty / skeleton ===== */
 .empty {
   padding: 32px 16px;
   text-align: center;
@@ -442,7 +446,6 @@ button.primary:disabled { opacity: .5; cursor: not-allowed; }
 }
 .skeleton-row:last-child { border-bottom: none; }
 
-/* ===== Status ===== */
 .status {
   font-size: 12px;
   color: var(--muted);
@@ -452,7 +455,6 @@ button.primary:disabled { opacity: .5; cursor: not-allowed; }
 .status.err { color: var(--chi); }
 .status.ok  { color: var(--thu); }
 
-/* ===== Modal ===== */
 .modal-bg {
   position: fixed;
   inset: 0;
@@ -512,7 +514,6 @@ button.primary:disabled { opacity: .5; cursor: not-allowed; }
   margin-left: 2px;
 }
 
-/* ===== Special section ===== */
 .special-section {
   margin-top: 32px;
   padding-top: 24px;
@@ -613,7 +614,6 @@ button.primary:disabled { opacity: .5; cursor: not-allowed; }
   background: rgba(248,113,113,.12);
 }
 
-/* ===== Responsive ===== */
 @media (max-width: 640px) {
   .cards { grid-template-columns: 1fr; }
   .podium { grid-template-columns: 1fr; }
@@ -626,7 +626,6 @@ button.primary:disabled { opacity: .5; cursor: not-allowed; }
   .special-row .actions { justify-content: flex-start; }
 }
 
-/* ===== Print ===== */
 @media print {
   body { background: #fff !important; color: #000 !important; padding: 0; }
   header, .week-bar, .add-form, .status, .modal-bg,
