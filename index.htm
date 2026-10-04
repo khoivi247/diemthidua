@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Thi đua trường PTDTNT Văn Quan</title>
+<title>Thi đua tuần</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,16 +11,15 @@
 
   <header>
     <div class="brand">
-      <h1 class="typing" id="title">Thi đua trường PTDTNT Văn Quan</h1>
+      <h1 class="typing" id="title">Thi đua trường PTDTNT VĂN QUAN</h1>
       <nav class="tabs" id="tabs">
         <button class="tab active" data-tab="school">Toàn trường</button>
         <button class="tab hidden" data-tab="myclass" id="tabMyClass">Lớp 10A2</button>
       </nav>
     </div>
-    <button class="admin-btn" id="adminBtn">admin KhoiViDev</button>
+    <button class="admin-btn" id="adminBtn">Login to Admin</button>
   </header>
 
-  <!-- ============ TAB TOÀN TRƯỜNG ============ -->
   <section class="panel active" id="panel-school">
 
     <div class="week-bar">
@@ -53,32 +52,23 @@
         <input id="fsTo" placeholder="Đến ngày" type="date" required>
       </div>
       <div class="form-row">
-        <input id="fsClass" placeholder="Lớp (VD: 10A1)" required>
-        <input id="fsScore" placeholder="Điểm thi đua" type="text" required>
+        <input id="fsClass" placeholder="Lớp (VD: 10A2)" required>
+        <input id="fsScore" placeholder="Điểm thi đua (số hoặc chữ)" type="text" required>
         <button class="primary" id="btnAddSchool" type="submit">Thêm</button>
       </div>
     </form>
 
-    <!-- ============ SỔ THEO DÕI ĐẶC BIỆT ============ -->
     <div class="special-section">
       <div class="special-header">
-        <h2>theo dõi thi đua</h2>
+        <h2>Sổ theo dõi thi đua</h2>
         <p>Thành tích đặc biệt &amp; kỷ luật</p>
       </div>
 
       <div class="special-tabs">
-        <button class="special-tab active" data-type="collective_good">
-          Tập thể - Tuyên dương
-        </button>
-        <button class="special-tab" data-type="personal_good">
-          Cá nhân - Tuyên dương
-        </button>
-        <button class="special-tab" data-type="collective_bad">
-          Tập thể - Kỷ luật
-        </button>
-        <button class="special-tab" data-type="personal_bad">
-          Cá nhân - Kỷ luật
-        </button>
+        <button class="special-tab active" data-type="collective_good">Tập thể - Tuyên dương</button>
+        <button class="special-tab" data-type="personal_good">Cá nhân - Tuyên dương</button>
+        <button class="special-tab" data-type="collective_bad">Tập thể - Kỷ luật</button>
+        <button class="special-tab" data-type="personal_bad">Cá nhân - Kỷ luật</button>
       </div>
 
       <div class="chart-wrap">
@@ -107,7 +97,6 @@
     </div>
   </section>
 
-  <!-- ============ TAB LỚP T ============ -->
   <section class="panel" id="panel-myclass">
 
     <div class="week-bar">
@@ -161,10 +150,9 @@
   <div class="status" id="status"></div>
 </div>
 
-<!-- Modal login -->
 <div class="modal-bg" id="modalBg">
   <div class="modal">
-    <h2>admin KhoiViDev</h2>
+    <h2>Login to change data</h2>
     <p>Nhập mật khẩu để chỉnh sửa số liệu.</p>
     <input type="password" id="pw" placeholder="Mật khẩu" autocomplete="current-password">
     <div class="modal-actions">
