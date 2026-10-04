@@ -1,5 +1,5 @@
 // 👇 DÁN URL APPS SCRIPT CỦA M VÀO ĐÂY
-const API = 'https://script.google.com/macros/s/AKfycbyvr1BnAQy3ax4S-pgN5L1kMdGFJiYzHUUSJkj1QTx4gDp_dUrn7ItArcGwUGVMMGVYpw/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyYrxI-VE0mUHnp_QRUevUydQ7yn1jDTnnRwwEF1lAL_7oD3F-sBltjrG34f3joAS_Xfw/exec';
 
 const $ = id => document.getElementById(id);
 const fmtNum = n => (Math.round(n * 100) / 100).toLocaleString('vi-VN');
