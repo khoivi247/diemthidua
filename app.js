@@ -1,5 +1,5 @@
 // 👇 DÁN URL APPS SCRIPT CỦA M VÀO ĐÂY
-const API = 'https://script.google.com/macros/s/AKfycbxppP3VZ-kWnxs1pqEeQsnKEs5AR1wFSlixYXNcLyLzUSkn1hSi4ODqL0RdhCIqK0VGcA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyvr1BnAQy3ax4S-pgN5L1kMdGFJiYzHUUSJkj1QTx4gDp_dUrn7ItArcGwUGVMMGVYpw/exec';
 
 const $ = id => document.getElementById(id);
 const fmtNum = n => (Math.round(n * 100) / 100).toLocaleString('vi-VN');
@@ -7,7 +7,7 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[c]));
 
-// Kiểm tra score có phải số không
+// Kiểm tra giá trị có phải số không
 function isNumeric(v) {
   if (v === '' || v === null || v === undefined) return false;
   return !isNaN(Number(v)) && isFinite(Number(v));
@@ -18,7 +18,7 @@ function fmtScore(v) {
   return escapeHtml(String(v));
 }
 
-// ===== So sánh tên lớp: 6 < 7A1 < 7A2 < 8A1 < 9 < 10A1 ... =====
+// ===== So sánh tên lớp =====
 function parseClassName(name) {
   const s = String(name).trim().toUpperCase();
   const m = s.match(/^(\d+)\s*([A-Z]*)/);
@@ -64,18 +64,15 @@ function calcTotal(good, fair, total, redFlag) {
 
 function formatDate(d) {
   if (!d) return '';
-  // Nếu là Date object (hiếm khi xảy ra qua JSON, nhưng phòng)
   if (d instanceof Date) {
     const day = String(d.getDate()).padStart(2, '0');
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const y = d.getFullYear();
     return `${day}/${m}/${y}`;
   }
-  // Nếu là chuỗi ISO yyyy-MM-dd
   const s = String(d);
   const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
-  // Nếu là chuỗi Date.toString() kiểu "Mon Sep 28 2026..."
   const dt = new Date(s);
   if (!isNaN(dt.getTime())) {
     const day = String(dt.getDate()).padStart(2, '0');
@@ -175,7 +172,14 @@ async function loadSchool() {
     const res = await fetch(`${API}?week=${schoolWeek}`);
     const j = await res.json();
     const rows = (j.data || []).slice();
-    rows.sort((a, b) => b.score - a.score);
+    // Sort theo điểm số giảm dần (chỉ lớp có số lên đầu)
+    rows.sort((a, b) => {
+      const aN = isNumeric(a.score), bN = isNumeric(b.score);
+      if (aN && bN) return Number(b.score) - Number(a.score);
+      if (aN) return -1;
+      if (bN) return 1;
+      return 0;
+    });
     schoolData = rows;
     renderSchool();
     flashStatus('Đã cập nhật ' + new Date().toLocaleTimeString('vi-VN'), false);
@@ -192,8 +196,10 @@ function renderSchool() {
 }
 
 function renderSchoolPodium() {
-  if (!schoolData.length) { $('podium').innerHTML = ''; return; }
-  const top3 = schoolData.slice(0, 3);
+  // Chỉ lấy lớp có điểm số
+  const numericRows = schoolData.filter(t => isNumeric(t.score));
+  if (!numericRows.length) { $('podium').innerHTML = ''; return; }
+  const top3 = numericRows.slice(0, 3);
   const order = [1, 0, 2];
   $('podium').innerHTML = order.filter(i => top3[i]).map(i => {
     const t = top3[i];
@@ -202,7 +208,7 @@ function renderSchoolPodium() {
       <div class="podium-card rank-${rank}" style="animation-delay:${i * 0.15}s">
         <div class="rank-badge">TOP ${rank}</div>
         <div class="class-name">${escapeHtml(t.class)}</div>
-        <div class="score">${fmtNum(t.score)}</div>
+        <div class="score">${fmtScore(t.score)}</div>
         <div class="score-label">điểm</div>
       </div>
     `;
@@ -215,19 +221,23 @@ function renderSchoolList() {
     return;
   }
   const sorted = schoolData.slice().sort((a, b) => compareClassName(a.class, b.class));
-  const ranks = schoolData.slice().sort((a, b) => b.score - a.score);
+  // Xếp hạng chỉ cho lớp có số
+  const numericRows = schoolData.filter(t => isNumeric(t.score));
+  const ranks = numericRows.slice().sort((a, b) => Number(b.score) - Number(a.score));
   const rankOf = new Map(ranks.map((t, i) => [t.class, i + 1]));
 
   $('list').innerHTML = sorted.map(t => {
     const rank = rankOf.get(t.class);
-    const topClass = rank <= 3 ? `top-${rank}` : '';
+    const topClass = rank && rank <= 3 ? `top-${rank}` : '';
+    const scoreIsNum = isNumeric(t.score);
+    const scoreClass = scoreIsNum ? '' : 'text-score';
     return `
       <div class="row ${topClass}">
-        <div class="rank">${rank}</div>
+        <div class="rank">${rank || '—'}</div>
         <div class="class-name">${escapeHtml(t.class)}</div>
         <div class="sub-score">${formatDate(t.from)}</div>
         <div class="sub-score">${formatDate(t.to)}</div>
-        <div class="total-score">${fmtNum(t.score)}</div>
+        <div class="total-score ${scoreClass}">${fmtScore(t.score)}</div>
         <div class="actions ${isAdmin ? 'show' : ''}">
           <button class="mini-btn" onclick="editSchool(${t.row})">Sửa</button>
           <button class="mini-btn danger" onclick="deleteSchool(${t.row})">Xóa</button>
@@ -241,16 +251,19 @@ function renderSchoolChart() {
   if (typeof Chart === 'undefined') return;
   const ctx = $('chart');
   if (!ctx) return;
-  if (!schoolData.length) {
+
+  // Chỉ vẽ lớp có điểm số
+  const numericData = schoolData.filter(t => isNumeric(t.score));
+  if (!numericData.length) {
     if (chart) { chart.destroy(); chart = null; }
     return;
   }
 
-  const sortedByClass = schoolData.slice().sort((a, b) => compareClassName(a.class, b.class));
+  const sortedByClass = numericData.slice().sort((a, b) => compareClassName(a.class, b.class));
   const labels = sortedByClass.map(t => t.class);
-  const values = sortedByClass.map(t => t.score);
+  const values = sortedByClass.map(t => Number(t.score));
 
-  const ranks = schoolData.slice().sort((a, b) => b.score - a.score);
+  const ranks = numericData.slice().sort((a, b) => Number(b.score) - Number(a.score));
   const rankOf = new Map(ranks.map((t, i) => [t.class, i]));
 
   const colors = labels.map(lbl => {
@@ -618,7 +631,6 @@ function renderSpecialChart() {
   });
 }
 
-// Nút chuyển giữa 4 loại đặc biệt
 document.querySelectorAll('.special-tab').forEach(btn => {
   btn.onclick = () => {
     specialType = btn.dataset.type;
@@ -722,13 +734,14 @@ async function post(body) {
 $('addFormSchool').addEventListener('submit', async e => {
   e.preventDefault();
   if (!isAdmin) return;
+  const rawScore = $('fsScore').value.trim();
   const payload = {
     action: 'addSchool',
     week: $('fsWeek').value,
     from: $('fsFrom').value,
     to: $('fsTo').value,
     class: $('fsClass').value.trim(),
-    score: Number($('fsScore').value),
+    score: isNumeric(rawScore) ? Number(rawScore) : rawScore,
   };
   $('btnAddSchool').disabled = true;
   $('btnAddSchool').textContent = 'Đang thêm...';
@@ -752,13 +765,14 @@ window.editSchool = async function(row) {
   if (!t) return;
   const cls = prompt('Tên lớp:', t.class);
   if (cls === null) return;
-  const score = prompt('Điểm thi đua:', t.score);
-  if (score === null) return;
+  const scoreRaw = prompt('Điểm thi đua (số hoặc chữ):', t.score);
+  if (scoreRaw === null) return;
+  const scoreVal = isNumeric(scoreRaw.trim()) ? Number(scoreRaw.trim()) : scoreRaw.trim();
   try {
     await post({
       action: 'updateSchool', row,
       week: t.week, from: t.from, to: t.to,
-      class: cls, score: Number(score),
+      class: cls, score: scoreVal,
     });
     await loadSchool();
     flashStatus('Đã cập nhật', false);
@@ -910,7 +924,15 @@ $('weekSelect').onchange = e => {
     try {
       const res = await fetch(`${API}?week=${schoolWeek}`);
       const j = await res.json();
-      schoolData = (j.data || []).slice().sort((a, b) => b.score - a.score);
+      const rows = (j.data || []).slice();
+      rows.sort((a, b) => {
+        const aN = isNumeric(a.score), bN = isNumeric(b.score);
+        if (aN && bN) return Number(b.score) - Number(a.score);
+        if (aN) return -1;
+        if (bN) return 1;
+        return 0;
+      });
+      schoolData = rows;
       renderSchool();
     } catch (err) { flashStatus('Lỗi: ' + err.message, true); }
   })();
@@ -928,9 +950,10 @@ $('btnCsv').onclick = () => {
   const w = schoolWeeks.find(x => String(x.week) === String(schoolWeek));
   const header = ['Hạng', 'Lớp', 'Điểm thi đua'];
   const sorted = schoolData.slice().sort((a, b) => compareClassName(a.class, b.class));
-  const ranks = schoolData.slice().sort((a, b) => b.score - a.score);
+  const numericRows = schoolData.filter(t => isNumeric(t.score));
+  const ranks = numericRows.slice().sort((a, b) => Number(b.score) - Number(a.score));
   const rankOf = new Map(ranks.map((t, i) => [t.class, i + 1]));
-  const rows = sorted.map(t => [rankOf.get(t.class), t.class, t.score]);
+  const rows = sorted.map(t => [rankOf.get(t.class) || '—', t.class, t.score]);
   const meta = [
     [`Bảng xếp hạng thi đua tuần ${schoolWeek}`],
     [`Từ ${formatDate(w?.from)} đến ${formatDate(w?.to)}`],
