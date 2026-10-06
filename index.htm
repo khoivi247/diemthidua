@@ -46,17 +46,22 @@
     <div class="list" id="list"></div>
 
     <form class="add-form" id="addFormSchool">
-      <div class="form-row">
-        <input id="fsWeek" placeholder="Tuần" type="number" required>
-        <input id="fsFrom" placeholder="Từ ngày" type="date" required>
-        <input id="fsTo" placeholder="Đến ngày" type="date" required>
-      </div>
-      <div class="form-row">
-        <input id="fsClass" placeholder="Lớp (VD: 10A2)" required>
-        <input id="fsScore" placeholder="Điểm thi đua (số hoặc chữ)" type="text" required>
-        <button class="primary" id="btnAddSchool" type="submit">Thêm</button>
-      </div>
-    </form>
+  <div class="form-row">
+    <input id="fsWeek" placeholder="Tuần" type="number" required>
+    <input id="fsFrom" placeholder="Từ ngày" type="date" required>
+    <input id="fsTo" placeholder="Đến ngày" type="date" required>
+  </div>
+  <div class="form-row">
+    <input id="fsClass" placeholder="Lớp (VD: 10A2)" required>
+    <input id="fsScore" placeholder="Điểm thi đua (số, chữ, hoặc để trống)" type="text">
+    <button class="primary" id="btnAddSchool" type="submit">Thêm</button>
+  </div>
+  <div class="form-row">
+    <button type="button" class="ghost-btn" id="btnCopyClasses">
+      Sao chép danh sách lớp từ tuần trước
+    </button>
+  </div>
+</form>
 
     <div class="special-section">
       <div class="special-header">
