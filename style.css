@@ -617,13 +617,55 @@ button.primary:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 640px) {
   .cards { grid-template-columns: 1fr; }
   .podium { grid-template-columns: 1fr; }
-  .row, .skeleton-row { grid-template-columns: 32px 1fr 80px; }
-  .row .sub-score, .skeleton-row .s3, .skeleton-row .s4 { display: none; }
   body { padding: 16px; }
   .chart-body { height: 260px; }
   .special-tabs { grid-template-columns: 1fr 1fr; }
-  .special-row { grid-template-columns: 1fr; gap: 6px; }
-  .special-row .actions { justify-content: flex-start; }
+
+  /* ===== Row mobile: 2 hàng ===== */
+  .row, .skeleton-row {
+    grid-template-columns: 32px 1fr auto;
+    grid-template-areas:
+      "rank name  name"
+      "rank dates total"
+      "rank actions actions";
+    gap: 6px 10px;
+    padding: 12px;
+  }
+  .row .rank       { grid-area: rank; align-self: start; padding-top: 2px; }
+  .row .class-name { grid-area: name; font-size: 15px; }
+  .row .sub-score  { grid-area: dates; text-align: left; font-size: 11px; }
+  .row .total-score{ grid-area: total; text-align: right; font-size: 15px; }
+  .row .actions {
+  grid-area: actions;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 4px;
+}
+.row .actions .mini-btn {
+  width: 100%;
+  text-align: center;
+}
+  /* Ẩn ngày thứ 2 (đến ngày) trên mobile cho gọn */
+  .row .sub-score + .sub-score { display: none; }
+
+  /* Nút Sửa/Xóa to hơn cho dễ bấm */
+  .mini-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  /* Special row mobile */
+  .special-row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "date actions"
+      "main main";
+    gap: 6px 10px;
+  }
+  .special-row .special-date { grid-area: date; }
+  .special-row .special-main { grid-area: main; }
+  .special-row .actions      { grid-area: actions; justify-content: flex-end; }
 }
 
 @media print {
