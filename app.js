@@ -12,8 +12,11 @@ function isNumeric(v) {
   if (v === '' || v === null || v === undefined) return false;
   return !isNaN(Number(v)) && isFinite(Number(v));
 }
-// Hiển thị score: số thì format, chữ thì hiện nguyên
+// Hiển thị score: số thì format, chữ thì hiện nguyên, trống thì "Chưa nhập"
 function fmtScore(v) {
+  if (v === '' || v === null || v === undefined) {
+    return '<span class="text-empty">Chưa nhập</span>';
+  }
   if (isNumeric(v)) return fmtNum(Number(v));
   return escapeHtml(String(v));
 }
@@ -32,6 +35,20 @@ function compareClassName(a, b) {
   if (pa.letter === '' && pb.letter !== '') return -1;
   if (pa.letter !== '' && pb.letter === '') return 1;
   return pa.letter.localeCompare(pb.letter);
+}
+
+// ===== Ngày tháng =====
+// Cộng n ngày vào chuỗi yyyy-MM-dd
+function addDays(dateStr, n) {
+  if (!dateStr) return '';
+  const parts = String(dateStr).slice(0, 10).split('-');
+  if (parts.length !== 3) return '';
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  d.setDate(d.getDate() + n);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 // ===== State =====
@@ -196,7 +213,6 @@ function renderSchool() {
 }
 
 function renderSchoolPodium() {
-  // Chỉ lấy lớp có điểm số
   const numericRows = schoolData.filter(t => isNumeric(t.score));
   if (!numericRows.length) { $('podium').innerHTML = ''; return; }
   const top3 = numericRows.slice(0, 3);
@@ -221,7 +237,6 @@ function renderSchoolList() {
     return;
   }
   const sorted = schoolData.slice().sort((a, b) => compareClassName(a.class, b.class));
-  // Xếp hạng chỉ cho lớp có số
   const numericRows = schoolData.filter(t => isNumeric(t.score));
   const ranks = numericRows.slice().sort((a, b) => Number(b.score) - Number(a.score));
   const rankOf = new Map(ranks.map((t, i) => [t.class, i + 1]));
@@ -230,7 +245,8 @@ function renderSchoolList() {
     const rank = rankOf.get(t.class);
     const topClass = rank && rank <= 3 ? `top-${rank}` : '';
     const scoreIsNum = isNumeric(t.score);
-    const scoreClass = scoreIsNum ? '' : 'text-score';
+    const scoreIsEmpty = (t.score === '' || t.score === null || t.score === undefined);
+    const scoreClass = scoreIsNum ? '' : (scoreIsEmpty ? 'empty-score' : 'text-score');
     return `
       <div class="row ${topClass}">
         <div class="rank">${rank || '—'}</div>
@@ -252,7 +268,6 @@ function renderSchoolChart() {
   const ctx = $('chart');
   if (!ctx) return;
 
-  // Chỉ vẽ lớp có điểm số
   const numericData = schoolData.filter(t => isNumeric(t.score));
   if (!numericData.length) {
     if (chart) { chart.destroy(); chart = null; }
@@ -730,6 +745,127 @@ async function post(body) {
   return j;
 }
 
+// =================== TỰ ĐỘNG ĐIỀN TUẦN & NGÀY ===================
+// Tìm tuần gần nhất có dữ liệu (trước tuần đang nhập)
+function findPreviousWeek(currentWeekNum) {
+  const sorted = schoolWeeks.slice().sort((a, b) => b.week - a.week);
+  for (const w of sorted) {
+    if (Number(w.week) < Number(currentWeekNum)) return w;
+  }
+  return null;
+}
+
+// Khi admin nhập tuần → tự điền ngày (thứ 2 → chủ nhật)
+function autoFillWeekDates() {
+  const weekInput = $('fsWeek');
+  const w = Number(weekInput.value);
+  if (!w) return;
+
+  // 1. Nếu tuần này đã có dữ liệu → điền từ dữ liệu cũ
+  const existing = schoolWeeks.find(x => Number(x.week) === w);
+  if (existing) {
+    $('fsFrom').value = String(existing.from).slice(0, 10);
+    $('fsTo').value = String(existing.to).slice(0, 10);
+    return;
+  }
+
+  // 2. Nếu chưa có → lấy tuần trước đó
+  //    from mới = to cũ + 1 ngày (thứ 2 tuần sau)
+  //    to mới = from mới + 6 ngày (chủ nhật)
+  const prev = findPreviousWeek(w);
+  if (prev) {
+    const newFrom = addDays(prev.to, 1);
+    const newTo = addDays(newFrom, 6);
+    $('fsFrom').value = newFrom;
+    $('fsTo').value = newTo;
+  }
+  // 3. Nếu chưa có tuần nào → để trống cho admin tự nhập
+}
+
+// Gắn sự kiện cho ô Tuần
+$('fsWeek').addEventListener('change', autoFillWeekDates);
+$('fsWeek').addEventListener('input', autoFillWeekDates);
+
+// =================== SAO CHÉP LỚP TỪ TUẦN TRƯỚC ===================
+async function copyClassesFromPreviousWeek() {
+  const w = Number($('fsWeek').value);
+  if (!w) {
+    flashStatus('Vui lòng nhập tuần trước', true);
+    return;
+  }
+  const from = $('fsFrom').value;
+  const to = $('fsTo').value;
+  if (!from || !to) {
+    flashStatus('Vui lòng nhập ngày trước', true);
+    return;
+  }
+
+  const prev = findPreviousWeek(w);
+  if (!prev) {
+    flashStatus('Chưa có tuần nào trước đó để sao chép', true);
+    return;
+  }
+
+  // Lấy danh sách lớp của tuần trước
+  let prevData = [];
+  try {
+    const res = await fetch(`${API}?week=${prev.week}`);
+    const j = await res.json();
+    prevData = j.data || [];
+  } catch (e) {
+    flashStatus('Lỗi tải dữ liệu tuần trước: ' + e.message, true);
+    return;
+  }
+
+  if (!prevData.length) {
+    flashStatus('Tuần trước không có lớp nào', true);
+    return;
+  }
+
+  // Kiểm tra tuần hiện tại đã có lớp nào chưa
+  const curData = schoolData.filter(t => Number(t.week) === w);
+  const curClasses = new Set(curData.map(t => String(t.class)));
+
+  // Những lớp cần thêm (chưa có trong tuần hiện tại)
+  const toAdd = prevData.filter(t => !curClasses.has(String(t.class)));
+
+  if (!toAdd.length) {
+    flashStatus('Tất cả lớp đã có trong tuần này rồi', false);
+    return;
+  }
+
+  if (!confirm(`Sẽ thêm ${toAdd.length} lớp từ tuần ${prev.week} vào tuần ${w} với điểm "Chưa nhập".\nTiếp tục?`)) return;
+
+  $('btnCopyClasses').disabled = true;
+  $('btnCopyClasses').textContent = 'Đang sao chép...';
+
+  let ok = 0, fail = 0;
+  for (const t of toAdd) {
+    try {
+      await post({
+        action: 'addSchool',
+        week: w,
+        from: from,
+        to: to,
+        class: t.class,
+        score: '',   // điểm trống
+      });
+      ok++;
+    } catch (e) {
+      fail++;
+      console.error('Lỗi thêm lớp', t.class, e);
+    }
+  }
+
+  $('btnCopyClasses').disabled = false;
+  $('btnCopyClasses').textContent = '📋 Sao chép danh sách lớp từ tuần trước';
+
+  await loadSchool();
+  flashStatus(`Đã sao chép ${ok} lớp${fail ? `, lỗi ${fail}` : ''}`, fail > 0);
+}
+
+$('btnCopyClasses').addEventListener('click', copyClassesFromPreviousWeek);
+
 // =================== CRUD TOÀN TRƯỜNG ===================
 $('addFormSchool').addEventListener('submit', async e => {
   e.preventDefault();
@@ -741,7 +877,7 @@ $('addFormSchool').addEventListener('submit', async e => {
     from: $('fsFrom').value,
     to: $('fsTo').value,
     class: $('fsClass').value.trim(),
-    score: isNumeric(rawScore) ? Number(rawScore) : rawScore,
+    score: rawScore === '' ? '' : (isNumeric(rawScore) ? Number(rawScore) : rawScore),
   };
   $('btnAddSchool').disabled = true;
   $('btnAddSchool').textContent = 'Đang thêm...';
@@ -765,9 +901,9 @@ window.editSchool = async function(row) {
   if (!t) return;
   const cls = prompt('Tên lớp:', t.class);
   if (cls === null) return;
-  const scoreRaw = prompt('Điểm thi đua (số hoặc chữ):', t.score);
+  const scoreRaw = prompt('Điểm thi đua (số, chữ, hoặc để trống):', t.score);
   if (scoreRaw === null) return;
-  const scoreVal = isNumeric(scoreRaw.trim()) ? Number(scoreRaw.trim()) : scoreRaw.trim();
+  const scoreVal = scoreRaw.trim() === '' ? '' : (isNumeric(scoreRaw.trim()) ? Number(scoreRaw.trim()) : scoreRaw.trim());
   try {
     await post({
       action: 'updateSchool', row,
@@ -953,7 +1089,11 @@ $('btnCsv').onclick = () => {
   const numericRows = schoolData.filter(t => isNumeric(t.score));
   const ranks = numericRows.slice().sort((a, b) => Number(b.score) - Number(a.score));
   const rankOf = new Map(ranks.map((t, i) => [t.class, i + 1]));
-  const rows = sorted.map(t => [rankOf.get(t.class) || '—', t.class, t.score]);
+  const rows = sorted.map(t => [
+    rankOf.get(t.class) || '—',
+    t.class,
+    (t.score === '' || t.score === null || t.score === undefined) ? 'Chưa nhập' : t.score
+  ]);
   const meta = [
     [`Bảng xếp hạng thi đua tuần ${schoolWeek}`],
     [`Từ ${formatDate(w?.from)} đến ${formatDate(w?.to)}`],
