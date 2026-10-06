@@ -621,7 +621,6 @@ button.primary:disabled { opacity: .5; cursor: not-allowed; }
   .chart-body { height: 260px; }
   .special-tabs { grid-template-columns: 1fr 1fr; }
 
-  /* ===== Row mobile: 2 hàng ===== */
   .row, .skeleton-row {
     grid-template-columns: 32px 1fr auto;
     grid-template-areas:
@@ -635,27 +634,14 @@ button.primary:disabled { opacity: .5; cursor: not-allowed; }
   .row .class-name { grid-area: name; font-size: 15px; }
   .row .sub-score  { grid-area: dates; text-align: left; font-size: 11px; }
   .row .total-score{ grid-area: total; text-align: right; font-size: 15px; }
-  .row .actions {
-  grid-area: actions;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-top: 4px;
-}
-.row .actions .mini-btn {
-  width: 100%;
-  text-align: center;
-}
-  /* Ẩn ngày thứ 2 (đến ngày) trên mobile cho gọn */
+  .row .actions    { grid-area: actions; justify-content: flex-end; margin-top: 4px; }
   .row .sub-score + .sub-score { display: none; }
 
-  /* Nút Sửa/Xóa to hơn cho dễ bấm */
   .mini-btn {
     padding: 6px 12px;
     font-size: 13px;
   }
 
-  /* Special row mobile */
   .special-row {
     grid-template-columns: 1fr auto;
     grid-template-areas:
@@ -692,4 +678,26 @@ button.primary:disabled { opacity: .5; cursor: not-allowed; }
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 4px;
+}
+
+/* Điểm trống: "Chưa nhập" */
+.row .total-score.empty-score,
+.podium-card .score .text-empty {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--muted);
+  font-weight: 500;
+}
+.text-empty {
+  color: var(--muted);
+  font-style: italic;
+  font-weight: 500;
+}
+
+/* Nút sao chép lớp */
+#btnCopyClasses {
+  width: 100%;
+  text-align: center;
+  padding: 9px 12px;
+  font-size: 13px;
 }
