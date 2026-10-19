@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Thi đua tuần</title>
+<title>Sổ thi đua</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,13 +11,13 @@
 
   <header>
     <div class="brand">
-      <h1 class="typing" id="title">Thi đua trường PTDTNT VĂN QUAN</h1>
+      <h1 class="typing" id="title">Sổ thi đua</h1>
       <nav class="tabs" id="tabs">
         <button class="tab active" data-tab="school">Toàn trường</button>
         <button class="tab hidden" data-tab="myclass" id="tabMyClass">Lớp 10A2</button>
       </nav>
     </div>
-    <button class="admin-btn" id="adminBtn">Login to Admin</button>
+    <button class="admin-btn" id="adminBtn">Đăng nhập admin</button>
   </header>
 
   <section class="panel active" id="panel-school">
@@ -65,8 +65,8 @@
 
     <div class="special-section">
       <div class="special-header">
-        <h2>Sổ theo dõi thi đua</h2>
-        <p>Thành tích đặc biệt &amp; kỷ luật</p>
+        <h2>Tuyên dương &amp; kỷ luật</h2>
+        <p>Theo dõi thành tích theo tuần</p>
       </div>
 
       <div class="special-tabs">
@@ -74,6 +74,20 @@
         <button class="special-tab" data-type="personal_good">Cá nhân - Tuyên dương</button>
         <button class="special-tab" data-type="collective_bad">Tập thể - Kỷ luật</button>
         <button class="special-tab" data-type="personal_bad">Cá nhân - Kỷ luật</button>
+      </div>
+
+      <div class="week-bar special-week-bar">
+        <label for="specialWeekSelect">Xem theo tuần</label>
+        <select id="specialWeekSelect"></select>
+        <span class="week-range" id="specialWeekRange"></span>
+      </div>
+
+      <div class="special-ranking" id="specialRankingSection" hidden>
+        <div class="special-ranking-heading">
+          <h3>Học sinh được tuyên dương</h3>
+          <p id="specialRankingNote">6 học sinh có tổng điểm cao nhất trong tuần</p>
+        </div>
+        <div class="special-ranking-list" id="specialRanking"></div>
       </div>
 
       <div class="chart-wrap">
@@ -91,7 +105,7 @@
         <div class="form-row">
           <input id="spClass" placeholder="Lớp (VD: 10A2)" required>
           <input id="spStudent" placeholder="Học sinh (bỏ trống nếu tập thể)">
-          <input id="spDate" placeholder="Ngày" type="date" required>
+          <select id="spWeek" required aria-label="Tuần ghi nhận"></select>
         </div>
         <div class="form-row">
           <input id="spContent" placeholder="Nội dung tuyên dương / kỷ luật" required>
@@ -157,7 +171,7 @@
 
 <div class="modal-bg" id="modalBg">
   <div class="modal">
-    <h2>Login to change data</h2>
+    <h2>Đăng nhập quản trị</h2>
     <p>Nhập mật khẩu để chỉnh sửa số liệu.</p>
     <input type="password" id="pw" placeholder="Mật khẩu" autocomplete="current-password">
     <div class="modal-actions">
