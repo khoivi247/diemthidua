@@ -64,6 +64,7 @@ let myChart = null;
 
 let specialData = [];
 let specialType = 'collective_good';
+let specialWeek = null;
 let specialChart = null;
 
 let token = null;
@@ -98,6 +99,23 @@ function formatDate(d) {
     return `${day}/${m}/${y}`;
   }
   return s;
+}
+
+function dateKey(value) {
+  if (!value) return '';
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+  }
+  const text = String(value);
+  const iso = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+  const localized = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (localized) {
+    return `${localized[3]}-${localized[2].padStart(2, '0')}-${localized[1].padStart(2, '0')}`;
+  }
+  const parsed = new Date(text);
+  if (isNaN(parsed.getTime())) return '';
+  return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
 }
 
 function flashStatus(msg, isErr) {
@@ -136,7 +154,7 @@ function switchTab(tab) {
   document.querySelectorAll('.panel').forEach(p => {
     p.classList.toggle('active', p.id === 'panel-' + tab);
   });
-  if (tab === 'school') loadSchool();
+  if (tab === 'school') loadSchool().then(loadSpecial);
   else if (tab === 'myclass') loadMy();
 }
 
@@ -165,6 +183,7 @@ async function loadSchoolWeeks() {
   if (!schoolWeeks.length) {
     $('weekSelect').innerHTML = '<option>Chưa có dữ liệu</option>';
     $('weekRange').textContent = '';
+    populateSpecialWeekSelectors();
     return;
   }
   $('weekSelect').innerHTML = schoolWeeks
@@ -175,11 +194,63 @@ async function loadSchoolWeeks() {
   }
   $('weekSelect').value = schoolWeek;
   updateSchoolWeekRange();
+  populateSpecialWeekSelectors();
 }
 
 function updateSchoolWeekRange() {
   const w = schoolWeeks.find(x => String(x.week) === String(schoolWeek));
   if (w) $('weekRange').textContent = `${formatDate(w.from)} → ${formatDate(w.to)}`;
+}
+
+function populateSpecialWeekSelectors() {
+  const select = $('specialWeekSelect');
+  const entrySelect = $('spWeek');
+  if (!select || !entrySelect) return;
+  if (!schoolWeeks.length) {
+    select.innerHTML = '<option value="">Chưa có tuần</option>';
+    entrySelect.innerHTML = '<option value="">Chưa có tuần</option>';
+    specialWeek = null;
+    $('specialWeekRange').textContent = '';
+    return;
+  }
+  if (!specialWeek || !schoolWeeks.some(w => String(w.week) === String(specialWeek))) {
+    specialWeek = schoolWeeks.some(w => String(w.week) === String(schoolWeek))
+      ? schoolWeek
+      : schoolWeeks[0].week;
+  }
+  const options = schoolWeeks
+    .map(w => `<option value="${escapeHtml(w.week)}">Tuần ${escapeHtml(w.week)}</option>`)
+    .join('');
+  select.innerHTML = options;
+  entrySelect.innerHTML = options;
+  select.value = specialWeek;
+  entrySelect.value = specialWeek;
+  updateSpecialWeekRange();
+}
+
+function updateSpecialWeekRange() {
+  const week = schoolWeeks.find(w => String(w.week) === String(specialWeek));
+  $('specialWeekRange').textContent = week
+    ? `${formatDate(week.from)} → ${formatDate(week.to)}`
+    : '';
+}
+
+function getSpecialWeekForRecord(record) {
+  if (record.week !== undefined && schoolWeeks.some(w => String(w.week) === String(record.week))) {
+    return String(record.week);
+  }
+  const date = dateKey(record.date);
+  if (!date) return '';
+  const week = schoolWeeks.find(w => {
+    const from = dateKey(w.from);
+    const to = dateKey(w.to);
+    return from && to && date >= from && date <= to;
+  });
+  return week ? String(week.week) : '';
+}
+
+function getSelectedSpecialData() {
+  return specialData.filter(record => getSpecialWeekForRecord(record) === String(specialWeek));
 }
 
 async function loadSchool() {
@@ -283,17 +354,17 @@ function renderSchoolChart() {
 
   const colors = labels.map(lbl => {
     const r = rankOf.get(lbl);
-    if (r === 0) return 'rgba(251,191,36,.85)';
-    if (r === 1) return 'rgba(203,213,225,.85)';
-    if (r === 2) return 'rgba(217,119,87,.85)';
-    return 'rgba(99,102,241,.7)';
+    if (r === 0) return 'rgba(189,129,33,.85)';
+    if (r === 1) return 'rgba(100,123,119,.75)';
+    if (r === 2) return 'rgba(184,94,72,.8)';
+    return 'rgba(36,104,91,.7)';
   });
   const borders = labels.map(lbl => {
     const r = rankOf.get(lbl);
-    if (r === 0) return '#fbbf24';
-    if (r === 1) return '#cbd5e1';
-    if (r === 2) return '#d97757';
-    return '#6366f1';
+    if (r === 0) return '#bd8121';
+    if (r === 1) return '#647b77';
+    if (r === 2) return '#b85e48';
+    return '#24685b';
   });
 
   if (chart) { chart.destroy(); chart = null; }
@@ -319,11 +390,11 @@ function renderSchoolChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#171a21',
-          borderColor: '#262b36',
+          backgroundColor: '#203735',
+          borderColor: '#d6e1dc',
           borderWidth: 1,
-          titleColor: '#e6e9ef',
-          bodyColor: '#e6e9ef',
+          titleColor: '#fbfcfa',
+          bodyColor: '#fbfcfa',
           padding: 10,
           cornerRadius: 8,
           callbacks: { label: c => ' ' + c.parsed.y + ' điểm' },
@@ -333,7 +404,7 @@ function renderSchoolChart() {
         x: {
           grid: { display: false },
           ticks: {
-            color: '#8a93a3',
+            color: '#647b77',
             font: { size: 11 },
             autoSkip: false,
             maxRotation: 45,
@@ -342,8 +413,8 @@ function renderSchoolChart() {
         },
         y: {
           beginAtZero: true,
-          grid: { color: 'rgba(255,255,255,.04)' },
-          ticks: { color: '#8a93a3', font: { size: 12 }, precision: 0 },
+          grid: { color: 'rgba(32,55,53,.1)' },
+          ticks: { color: '#647b77', font: { size: 12 }, precision: 0 },
         },
       },
     },
@@ -469,11 +540,11 @@ function renderMyChart() {
       datasets: [{
         label: 'Điểm thi đua',
         data: values,
-        borderColor: '#6366f1',
-        backgroundColor: 'rgba(99,102,241,.15)',
+        borderColor: '#24685b',
+        backgroundColor: 'rgba(36,104,91,.14)',
         borderWidth: 2,
-        pointBackgroundColor: '#6366f1',
-        pointBorderColor: '#171a21',
+        pointBackgroundColor: '#24685b',
+        pointBorderColor: '#fbfcfa',
         pointBorderWidth: 2,
         pointRadius: 5,
         pointHoverRadius: 7,
@@ -488,22 +559,22 @@ function renderMyChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#171a21',
-          borderColor: '#262b36',
+          backgroundColor: '#203735',
+          borderColor: '#d6e1dc',
           borderWidth: 1,
-          titleColor: '#e6e9ef',
-          bodyColor: '#e6e9ef',
+          titleColor: '#fbfcfa',
+          bodyColor: '#fbfcfa',
           padding: 10,
           cornerRadius: 8,
           callbacks: { label: c => ' ' + c.parsed.y + ' điểm' },
         },
       },
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#8a93a3', font: { size: 12 } } },
+        x: { grid: { display: false }, ticks: { color: '#647b77', font: { size: 12 } } },
         y: {
           beginAtZero: true,
-          grid: { color: 'rgba(255,255,255,.04)' },
-          ticks: { color: '#8a93a3', font: { size: 12 } },
+          grid: { color: 'rgba(32,55,53,.1)' },
+          ticks: { color: '#647b77', font: { size: 12 } },
         },
       },
     },
@@ -512,6 +583,7 @@ function renderMyChart() {
 
 // =================== SPECIAL ===================
 async function loadSpecial() {
+  $('specialRankingSection').hidden = true;
   $('specialList').innerHTML = Array.from({ length: 4 }).map(() => `
     <div class="skeleton-row">
       <div class="skeleton" style="width:24px;height:16px;"></div>
@@ -522,6 +594,7 @@ async function loadSpecial() {
     </div>
   `).join('');
   try {
+    if (!schoolWeeks.length) await loadSchoolWeeks();
     const res = await fetch(`${API}?action=special&type=${encodeURIComponent(specialType)}`);
     const j = await res.json();
     specialData = j.data || [];
@@ -535,6 +608,7 @@ async function loadSpecial() {
 
 function renderSpecial() {
   renderSpecialList();
+  renderSpecialRanking();
   renderSpecialChart();
   updateSpecialTabStyles();
 }
@@ -546,12 +620,12 @@ function updateSpecialTabStyles() {
 }
 
 function renderSpecialList() {
-  if (!specialData.length) {
-    $('specialList').innerHTML = '<div class="empty">Chưa có dữ liệu cho mục này</div>';
+  const weeklyData = getSelectedSpecialData();
+  if (!weeklyData.length) {
+    $('specialList').innerHTML = `<div class="empty">Tuần ${escapeHtml(specialWeek || '')} chưa có dữ liệu cho mục này</div>`;
     return;
   }
-  const sorted = specialData.slice().sort((a, b) => {
-    if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
+  const sorted = weeklyData.slice().sort((a, b) => {
     return b.row - a.row;
   });
 
@@ -562,7 +636,7 @@ function renderSpecialList() {
     const pointText = (t.point >= 0 ? '+' : '') + t.point;
     return `
       <div class="special-row">
-        <div class="special-date">${formatDate(t.date)}</div>
+        <div class="special-date">Tuần ${escapeHtml(specialWeek || '')}</div>
         <div class="special-main">
           <div class="special-title">
             ${cls}${student}
@@ -579,26 +653,80 @@ function renderSpecialList() {
   }).join('');
 }
 
+function renderSpecialRanking() {
+  const section = $('specialRankingSection');
+  const list = $('specialRanking');
+  if (specialType !== 'personal_good') {
+    section.hidden = true;
+    return;
+  }
+  section.hidden = false;
+  const totals = new Map();
+  getSelectedSpecialData().forEach(record => {
+    const student = String(record.student || '').trim();
+    if (!student) return;
+    const className = String(record.class || '').trim();
+    const key = `${className.toLocaleLowerCase()}|${student.toLocaleLowerCase()}`;
+    const current = totals.get(key) || { className, student, points: 0, records: 0 };
+    current.points += Number(record.point) || 0;
+    current.records += 1;
+    totals.set(key, current);
+  });
+  const ranked = Array.from(totals.values()).sort((a, b) =>
+    b.points - a.points
+    || compareClassName(a.className, b.className)
+    || a.student.localeCompare(b.student, 'vi')
+  );
+  $('specialRankingNote').textContent = `${Math.min(6, ranked.length)} học sinh dẫn đầu · cộng dồn điểm tuyên dương trong tuần`;
+  if (!ranked.length) {
+    list.innerHTML = `<div class="empty">Tuần ${escapeHtml(specialWeek || '')} chưa có điểm tuyên dương cá nhân để xếp hạng</div>`;
+    return;
+  }
+  list.innerHTML = ranked.map((student, index) => {
+    const award = index === 0
+      ? { name: 'Giải nhất', className: 'award-first' }
+      : index < 3
+        ? { name: 'Giải nhì', className: 'award-second' }
+        : index < 6
+          ? { name: 'Giải ba', className: 'award-third' }
+          : null;
+    return `
+      <div class="ranking-row ${award ? `ranking-featured ${award.className}` : ''}">
+        <div class="ranking-rank">
+          <span class="ranking-place">${index + 1}</span>
+          ${award ? `<span class="ranking-award">${award.name}</span>` : ''}
+        </div>
+        <div class="ranking-student">
+          <strong>${escapeHtml(student.student)}</strong>
+          <span>${escapeHtml(student.class || 'Chưa có lớp')} · ${student.records} lượt tuyên dương</span>
+        </div>
+        <div class="ranking-points">${fmtNum(student.points)} <span>điểm</span></div>
+      </div>
+    `;
+  }).join('');
+}
+
 function renderSpecialChart() {
   if (typeof Chart === 'undefined') return;
   const ctx = $('specialChart');
   if (!ctx) return;
 
-  if (!specialData.length) {
+  const weeklyData = getSelectedSpecialData();
+  if (!weeklyData.length) {
     if (specialChart) { specialChart.destroy(); specialChart = null; }
     return;
   }
 
   const byClass = {};
-  specialData.forEach(t => {
+  weeklyData.forEach(t => {
     if (!t.class) return;
     byClass[t.class] = (byClass[t.class] || 0) + t.point;
   });
   const labels = Object.keys(byClass).sort((a, b) => compareClassName(a, b));
   const values = labels.map(l => byClass[l]);
 
-  const colors = values.map(v => v >= 0 ? 'rgba(74,222,128,.75)' : 'rgba(248,113,113,.75)');
-  const borders = values.map(v => v >= 0 ? '#4ade80' : '#f87171');
+  const colors = values.map(v => v >= 0 ? 'rgba(52,122,81,.72)' : 'rgba(179,78,69,.72)');
+  const borders = values.map(v => v >= 0 ? '#347a51' : '#b34e45');
 
   if (specialChart) { specialChart.destroy(); specialChart = null; }
 
@@ -622,11 +750,11 @@ function renderSpecialChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#171a21',
-          borderColor: '#262b36',
+          backgroundColor: '#203735',
+          borderColor: '#d6e1dc',
           borderWidth: 1,
-          titleColor: '#e6e9ef',
-          bodyColor: '#e6e9ef',
+          titleColor: '#fbfcfa',
+          bodyColor: '#fbfcfa',
           padding: 10,
           cornerRadius: 8,
           callbacks: { label: c => ' ' + (c.parsed.y >= 0 ? '+' : '') + c.parsed.y + ' điểm' },
@@ -635,11 +763,11 @@ function renderSpecialChart() {
       scales: {
         x: {
           grid: { display: false },
-          ticks: { color: '#8a93a3', font: { size: 11 }, autoSkip: false, maxRotation: 45 },
+          ticks: { color: '#647b77', font: { size: 11 }, autoSkip: false, maxRotation: 45 },
         },
         y: {
-          grid: { color: 'rgba(255,255,255,.04)' },
-          ticks: { color: '#8a93a3', font: { size: 12 }, precision: 0 },
+          grid: { color: 'rgba(32,55,53,.1)' },
+          ticks: { color: '#647b77', font: { size: 12 }, precision: 0 },
         },
       },
     },
@@ -652,6 +780,20 @@ document.querySelectorAll('.special-tab').forEach(btn => {
     updateSpecialTabStyles();
     loadSpecial();
   };
+});
+
+$('specialWeekSelect').addEventListener('change', e => {
+  specialWeek = e.target.value;
+  $('spWeek').value = specialWeek;
+  updateSpecialWeekRange();
+  renderSpecial();
+});
+
+$('spWeek').addEventListener('change', e => {
+  specialWeek = e.target.value;
+  $('specialWeekSelect').value = specialWeek;
+  updateSpecialWeekRange();
+  renderSpecial();
 });
 
 // =================== ADMIN ===================
@@ -716,6 +858,7 @@ $('btnLogin').onclick = async () => {
         $('fsFrom').value = String(ws.from).slice(0, 10);
         $('fsTo').value = String(ws.to).slice(0, 10);
       }
+      $('spWeek').value = specialWeek || schoolWeek || '';
       renderSchoolList();
       renderMyList();
       renderSpecialList();
@@ -995,13 +1138,19 @@ window.deleteMy = async function(row) {
 $('addFormSpecial').addEventListener('submit', async e => {
   e.preventDefault();
   if (!isAdmin) return;
+  const week = schoolWeeks.find(w => String(w.week) === String($('spWeek').value));
+  const weekStart = week ? dateKey(week.from) : '';
+  if (!weekStart) {
+    flashStatus('Tuần đã chọn chưa có ngày bắt đầu. Hãy tạo tuần ở phần thi đua trước.', true);
+    return;
+  }
   const payload = {
     action: 'addSpecial',
     type: specialType,
     class: $('spClass').value.trim(),
     student: $('spStudent').value.trim(),
     content: $('spContent').value.trim(),
-    date: $('spDate').value,
+    date: weekStart,
     point: Number($('spPoint').value),
   };
   $('btnAddSpecial').disabled = true;
@@ -1029,7 +1178,18 @@ window.editSpecial = async function(row) {
   const cls = prompt('Lớp:', t.class); if (cls === null) return;
   const student = prompt('Học sinh (để trống nếu tập thể):', t.student); if (student === null) return;
   const content = prompt('Nội dung:', t.content); if (content === null) return;
-  const date = prompt('Ngày (YYYY-MM-DD):', t.date); if (date === null) return;
+  const currentWeek = getSpecialWeekForRecord(t);
+  const weekNumber = prompt('Tuần:', currentWeek); if (weekNumber === null) return;
+  const week = schoolWeeks.find(w => String(w.week) === String(weekNumber.trim()));
+  if (!week) {
+    flashStatus('Tuần không tồn tại. Hãy chọn một tuần đã được tạo.', true);
+    return;
+  }
+  const date = dateKey(week.from);
+  if (!date) {
+    flashStatus('Tuần đã chọn chưa có ngày bắt đầu.', true);
+    return;
+  }
   const point = prompt('Điểm (+/-):', t.point); if (point === null) return;
   try {
     await post({
@@ -1131,5 +1291,5 @@ $('btnPdf').onclick = () => {
 };
 
 // =================== Init ===================
-typeTitle('Thi đua');
+typeTitle('Sổ thi đua');
 switchTab('school');
